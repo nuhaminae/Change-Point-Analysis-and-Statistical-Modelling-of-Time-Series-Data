@@ -1,0 +1,5 @@
+outs:
+- md5: 872093ef231f048dd940c9a65ad9986f
+  size: 670636
+  hash: md5
+  path: BrentOilPrices_Log.csv
