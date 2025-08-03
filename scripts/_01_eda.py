@@ -47,7 +47,7 @@ class BrentOilDiagnostics:
         self.load_data()
 
     @staticmethod
-    def safe_relpath(path, start=os.getcwd()):
+    def safe_relpath(path, start=None):
         """
         Return a relative path, handling cases where paths are on different drives.
 
