@@ -178,15 +178,15 @@ The following plots illustrate key trends in the Bernt Oil Price:
 ![Price Trend](insights/eda/brent_oil_prices_over_time.png)
 
 - Log Price Return
-![Log Returns](insights\eda\log_returns_of_brent_prices.png)
+![Log Returns](insights/eda/log_returns_of_brent_prices.png)
 
 - 180 days Rolling Mean Price
 
-![Rolling Mean](insights\eda\rolling_mean_overlay.png)
+![Rolling Mean](insights/eda/rolling_mean_overlay.png)
 
 - Rolling Volatality
 
-![Rolling Volatality](insights\eda\rolling_volatility_(std_dev).png)
+![Rolling Volatality](insights/eda/rolling_volatility_(std_dev).png)
 
 ---
 
