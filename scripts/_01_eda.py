@@ -252,7 +252,7 @@ class BrentOilDiagnostics:
         )
         print(f"Enriched DataFrame saved to {self.safe_relpath(self.processed_dir)}.")
 
-        print("nDataFrame Head:")
+        print("DataFrame Head:")
         display(df_out.head())
         print(f"\nShape: {df_out.shape}")
         print(f"\nColumns: {list(df_out.columns)}")
