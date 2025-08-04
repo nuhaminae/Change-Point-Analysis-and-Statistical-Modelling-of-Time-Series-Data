@@ -74,8 +74,8 @@ With Brent oil serving as a strategic signal across economic and political domai
 |   ├── _01_eda.py
 |   └── ...
 ├── tests/
-│   ├── test_dummy.py
-|   ├── test_01_eda.py
+│   ├── test_01_eda.py
+|   ├── test_dummy.py
 |   └── ...
 ├── .dvcignore
 ├── .flake8
@@ -103,7 +103,7 @@ With Brent oil serving as a strategic signal across economic and political domai
 ```bash
 # Clone repo
 git clone https://github.com/nuhaminae/Change-Point-Analysis-and-Statistical-Modelling-of-Time-Series-Data
-cd https://github.com/nuhaminae/Change-Point-Analysis-and-Statistical-Modelling-of-Time-Series-Data
+cd Change-Point-Analysis-and-Statistical-Modelling-of-Time-Series-Data
 ____________________________________________
 # Create and activate virtual environment
 python -m venv .oilvenv
