@@ -26,3 +26,6 @@ logs/
 
 # Caches
 .cache/
+
+# Dashboard
+/node_modules
