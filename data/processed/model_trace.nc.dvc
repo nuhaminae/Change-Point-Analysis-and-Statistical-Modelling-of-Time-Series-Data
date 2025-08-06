@@ -1,0 +1,5 @@
+outs:
+- md5: 4f7065c5a24c86c3cb1ae874a3874a7f
+  size: 778210
+  hash: md5
+  path: model_trace.nc
