@@ -1,3 +1,5 @@
+/* App.css */
+
 .App {
   text-align: center;
 }
@@ -14,7 +16,7 @@
 }
 
 .App-header {
-  background-color: #282c34;
+  background-color: #791e40;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -35,4 +37,12 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.rhat-warning {
+  background-color: #ffe6e6;
+}
+
+.ess-warning {
+  background-color: #fff8dc;
 }
