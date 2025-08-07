@@ -62,6 +62,7 @@ With Brent oil serving as a strategic signal across economic and political domai
 ```bash
 ├── .dvc/                              # Data Version Control
 ├── .github/                           # CI workflows
+├── brent-oil-price-dashboard/
 ├── data/
 │   ├── raw/                           # Original datasets
 │   └── processed/                     # Cleaned and transformed datasets
@@ -81,6 +82,7 @@ With Brent oil serving as a strategic signal across economic and political domai
 ├── .flake8
 ├── .gitignore                         # Ignore unnecessary files
 ├── .pre-commit-config.yaml            # Pre-commit configuration
+├── app.py
 ├── format.ps1                         # Formatting
 ├── pyproject.toml
 ├── README.md                          # Project overview and setup instructions
@@ -127,46 +129,94 @@ dvc pull
 
 Once the environment is set up, you can execute the pipeline and inspect model outputs as follows:
 
-1. Preprocessing and EDA
+1. **Preprocessing and EDA**
+    Run the core preprocessing scripts:
 
-Run the core preprocessing scripts:
+    ```bash
+    python scripts/_01_eda.py
+    ```
 
-```bash
-python scripts/_eda.py.py
-```
+    The script performs initial diagnostics on the Brent oil price series as a foundation for Bayesian change point Modelling.
 
-The script performs initial diagnostics on the Brent oil price series as a foundation for Bayesian change point Modelling.
+2. **Bayesian Change Point Modelling**
+    Run the core scripts:
 
-This script generate the following visualisation:
+    ```bash
+    python scripts/_02_bayesian_model.py
+    python scripts/_03_bayesian_inference_vis.py
+    ```
 
-- `insights/eda/brent_oil_prices_over_time.png`
-- `insights/eda/log_returns_of_brent_prices.png`
-- `insights/eda/rolling_mean_overlay.png`
-- `insights/eda/rolling_volatility_(std_dev).png`
+    These scripts generate posterior distributions and regime segmentation plots.
 
-### Explore with Notebooks
+3. **Explore with Notebooks**
+    Notebooks are provided for exploratory and iterative development:
 
-Notebooks are provided for exploratory and iterative development:
+    - `notebooks/01_eda.ipynb` — visual patterns in data
+    - `notebooks/02_bayesian_model_setup.ipynb` — PyMC4 models setup
+    - `notebooks/03_model_inference_vis.ipynb` — posterior interpretation and trace plots
+    Open with Jupyter or VSCode to navigate the workflow interactively.
 
-- `notebooks/01_eda.ipynb` — visual patterns in data
+4. **Launch the Interactive Dashboard**
+    Start the Flask backend:
 
-Open with Jupyter or VSCode to navigate the workflow interactively.
+    ```bash
+    python app.py
+    ```
 
-### Code Quality
+    Then, in a separate terminal, start the React frontend:
 
-This project uses pre-commit hooks to automatically format and lint `.py` and `.ipynb` files using:
+    ```bash
+    python npm start
+    ```
 
-|Tool       | Purpose                                       |
-|:----------|-----------------------------------------------|
-| Black    |Enforces consistent code formatting            |
-| isort     |Sorts and organises import statements          |
-| Flake8    |Lints Python code for style issues             |
-| nbQA      |Runs Black, isort, and Flake8 inside notebooks |
+    Once both are running, open the React frontend in your browser and navigate to:
+    `http://localhost:5000/`
 
-``` bash
-# Format and lint all scripts and notebooks
-pre-commit run --all-files
-```
+     The dashboard includes:
+
+    - **Price Chart**: Daily Brent oil prices with change point overlays and event annotations.
+    - **Rolling Mean**: 180-day moving average of prices.
+    - **Rolling Std Dev**: Rolling volatility to assess market turbulence.
+    - **Log Return**: Daily log returns to capture price momentum and clustering.
+    - **Change Point Chart**: Posterior mean shifts and regime transitions.
+    - **Posterior Summary**: PyMC4 model diagnostics and trace plots.
+
+    Use the dropdown menu to toggle between views and explore different statistical layers of the time series.
+
+5. **API Endpoints (Flask)**
+    The dashboard is powered by the following Flask routes:
+
+    |Endpoint       | Description                                   |
+    |:--------------|-----------------------------------------------|
+    |/price-data    |Returns Brent oil prices with rolling metrics  |
+    |/change-points |Returns PyMC4-inferred change point segments   |
+    |/event-overlay |Returns curated event metadata for annotation  |
+
+    These endpoints serve JSON payloads consumed by the React frontend.
+
+6. **Dashboard Walkthrough (GIF)**
+
+    This GIF demonstrates:
+    - Toggling between statistical views
+    - Hovering over change points and events
+    - Interacting with dropdown filters and overlays
+
+    >Tip: For best performance, ensure both Flask and React servers are running concurrently.
+
+7. **Code Quality and Linting**
+    This project uses pre-commit hooks to automatically format and lint `.py` and `.ipynb` files using:
+
+    |Tool       | Purpose                                       |
+    |:----------|-----------------------------------------------|
+    | Black    |Enforces consistent code formatting            |
+    | isort     |Sorts and organises import statements          |
+    | Flake8    |Lints Python code for style issues             |
+    | nbQA      |Runs Black, isort, and Flake8 inside notebooks |
+
+    ``` bash
+    # Format and lint all scripts and notebooks
+    pre-commit run --all-files
+    ```
 
 ---
 
@@ -189,6 +239,28 @@ The following plots illustrate key trends in the Bernt Oil Price:
 ![Rolling Volatality](insights/eda/rolling_volatility_(std_dev).png)
 
 ---
+
+## Modelling Insights
+
+- Change Point
+
+![Change Point](insights/model/change_point_detection.png)
+
+- Energy Plot
+
+![Energy Point](insights/model/energy_plot.png)
+
+- Posterior Plot
+
+![Posterior Point](insights/model/posterior_plot.png)
+
+- Trace Plot
+
+![Trace Point](insights/model/trace_plot.png)
+
+- Volatality Change Point Detection
+
+![Volatality Detection](insights/model/volatility_change_point_detection.png)
 
 ## Contribution
 
@@ -213,4 +285,4 @@ Make sure to follow best practices for version control, testing, and documentati
 
 ## Project Status
 
-The project is underway. Follow the [commit history](https://github.com/nuhaminae/Change-Point-Analysis-and-Statistical-Modelling-of-Time-Series-Data).
+The project is completed. Check the [commit history](https://github.com/nuhaminae/Change-Point-Analysis-and-Statistical-Modelling-of-Time-Series-Data).
