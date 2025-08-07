@@ -28,4 +28,4 @@ logs/
 .cache/
 
 # Dashboard
-/node_modules
+*brent-oil-price-dashboard/node_modules/**
