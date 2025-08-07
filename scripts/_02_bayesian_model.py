@@ -124,6 +124,31 @@ class RegimeMixtureModel:
         # print(f"📍 Detected change point indices: {change_points}")
         # print(f"\n📅 Detected change point dates: {self.change_date.tolist()}")
 
+        # Save enriched change point data to CSV
+        if self.change_date is not None and not self.change_date.empty:
+            enriched_rows = []
+            for cp in self.change_date:
+                cp_str = cp.strftime("%Y-%m-%d")
+                before_mean = self.df[self.df.index < cp]["Price"].mean()
+                after_mean = self.df[self.df.index >= cp]["Price"].mean()
+                enriched_rows.append(
+                    {
+                        "date": cp_str,
+                        "mean_before": round(before_mean, 2),
+                        "mean_after": round(after_mean, 2),
+                        "pct_change": round(
+                            (after_mean - before_mean) / before_mean * 100, 2
+                        ),
+                    }
+                )
+
+            cp_df = pd.DataFrame(enriched_rows)
+            output_path = os.path.join(self.processed_dir, "change_points.csv")
+            cp_df.to_csv(output_path, index=False)
+            print(
+                f"\n💾 Enriched change point saved to {self.safe_relpath(output_path)}"
+            )
+
         # Visualisation
         import matplotlib.pyplot as plt
 
