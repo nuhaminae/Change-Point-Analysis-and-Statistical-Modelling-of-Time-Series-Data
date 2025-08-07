@@ -40,7 +40,9 @@ In this project, we explore how PyMC4-powered change point modelling transforms 
 
 The global oil market is a narrative of disruption where geopolitical shocks, OPEC decisions, and policy turns leave fingerprints on price charts. At Birhan Energies, we transform this turbulence into clarity. We use Bayesian Change Point Modelling via PyMC4, and analyse Brent oil prices to uncover “when” structural shifts occur and “why” they might be happening.
 
-### **Business Need**
+Brent oil prices exhibit non-stationary behaviour with long-term trends and volatility clustering. To stabilise variance and ensure model tractability, we transform prices into log returns. This allows for clearer detection of structural breaks and supports Bayesian inference assumptions.
+
+### Business Need
 
 With Brent oil serving as a strategic signal across economic and political domains, stakeholders require more than intuition—they need data-backed interpretation. Our aim is to:
 
@@ -54,6 +56,15 @@ With Brent oil serving as a strategic signal across economic and political domai
 
 - **Brent Prices**: Daily USD/barrel from May 1987 to September 2022.
 - **Event Tabdata**: 20 curated entries covering economic shocks, OPEC decisions, geopolitical conflicts.
+
+---
+
+## Assumptions and Limitations
+
+- Assumes price shifts are driven by single dominant events.
+- Change point detection identifies correlation, not causation.
+- Event dates are approximate and may lag actual market response.
+- Volatility clustering may obscure regime boundaries.
 
 ---
 
@@ -243,22 +254,63 @@ The following plots illustrate key trends in the Bernt Oil Price:
 ## Modelling Insights
 
 - Change Point
+  - The algorithm identifies multiple structural breaks, often aligning with known geopolitical or economic disruptions.
+
+  - These change points suggest transitions between different market regimes (e.g., from stable to volatile periods or vice versa).
 
 ![Change Point](insights/model/change_point_detection.png)
 
 - Energy Plot
+  - This plot visualises the distribution of marginal energy across four MCMC chains used in your PyMC4 model.
+
+  - The legend includes BFMI (Bayesian Fraction of Missing Information) values for each chains.
+  - BFMI is a diagnostic metric that assesses how well the sampler explores the energy landscape.
+  - Values close to 1.0 indicate efficient sampling and good mixing across chains.
+  - This plot helps validate the reliability of your posterior estimates critical for interpreting change points and regime shifts.
 
 ![Energy Point](insights/model/energy_plot.png)
 
 - Posterior Plot
 
+## Posterior Summary
+
+| Parameter     | Description                          | Mean   | 94% HDI Range         |
+|---------------|--------------------------------------|--------|------------------------|
+| mu_log_return | Mean of log returns                  | 0.00022| −0.00029 to 0.0007     |
+| sigma_1       | Volatility before change point       | 0.023  | 0.0223 to 0.023        |
+| sigma_2       | Volatility after change point        | 0.029  | 0.026 to 0.029         |
+| tau           | Change point index                   | 5389   | 5346 to 5422           |
+
+These results confirm a statistically significant shift in volatility and support event attribution analysis.
+
 ![Posterior Point](insights/model/posterior_plot.png)
 
 - Trace Plot
 
+  **Model Diagnostics: Posterior & Trace Plots**
+
+  To validate our Bayesian model, we examined both posterior distributions and MCMC trace plots:
+
+  - `mu_log_return`: Stable mean across the series.
+  - `sigma_1` vs. `sigma_2`: Volatility increased post-change point.
+  - `tau`: Sharp posterior peak confirms a well-identified regime shift.
+  - Trace plots show good mixing and convergence across all chains.
+
+  These diagnostics confirm the reliability of our change point detection and support downstream event attribution.
+
 ![Trace Point](insights/model/trace_plot.png)
 
 - Volatality Change Point Detection
+
+  **Volatility Change Point Detection**
+
+  Using PyMC4, we modeled log returns to detect shifts in market volatility. The model identified a significant change point around 2008, coinciding with the Global Financial Crisis.
+
+  | Metric | Before 2008 | After 2008 | % Change |
+  |--------|-------------|------------|----------|
+  | Volatility (σ) | 0.023 | 0.029 | +26.1% |
+
+  This confirms a transition to a more turbulent regime, supporting risk-aware investment strategies and policy planning.
 
 ![Volatality Detection](insights/model/volatility_change_point_detection.png)
 
