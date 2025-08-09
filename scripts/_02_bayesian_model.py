@@ -44,6 +44,8 @@ class RegimeMixtureModel:
         self.plot_dir = plot_dir
         self.model = None
         self.trace = None
+        self.tau_1_mode = None
+        self.tau_2_mode = None
         self.change_date = None
 
         # Create output directories if they do not exist
@@ -124,31 +126,6 @@ class RegimeMixtureModel:
         # print(f"📍 Detected change point indices: {change_points}")
         # print(f"\n📅 Detected change point dates: {self.change_date.tolist()}")
 
-        # Save enriched change point data to CSV
-        if self.change_date is not None and not self.change_date.empty:
-            enriched_rows = []
-            for cp in self.change_date:
-                cp_str = cp.strftime("%Y-%m-%d")
-                before_mean = self.df[self.df.index < cp]["Price"].mean()
-                after_mean = self.df[self.df.index >= cp]["Price"].mean()
-                enriched_rows.append(
-                    {
-                        "date": cp_str,
-                        "mean_before": round(before_mean, 2),
-                        "mean_after": round(after_mean, 2),
-                        "pct_change": round(
-                            (after_mean - before_mean) / before_mean * 100, 2
-                        ),
-                    }
-                )
-
-            cp_df = pd.DataFrame(enriched_rows)
-            output_path = os.path.join(self.processed_dir, "change_points.csv")
-            cp_df.to_csv(output_path, index=False)
-            print(
-                f"\n💾 Enriched change point saved to {self.safe_relpath(output_path)}"
-            )
-
         # Visualisation
         import matplotlib.pyplot as plt
 
@@ -186,8 +163,8 @@ class RegimeMixtureModel:
 
     def build_volatility_model_with_pymc(self):
         """
-        Builds a Bayesian model to detect a change point in volatility
-        by using log returns.
+        Builds a Bayesian model to detect two change points in volatility
+        using log returns. This allows for three volatility regimes.
         """
 
         print("🔍 Performing Augmented Dickey-Fuller test on log returns...")
@@ -208,12 +185,36 @@ class RegimeMixtureModel:
         data = log_returns.values
         idx = np.arange(len(data))
 
+        log_returns = self.df["LogReturn"].dropna()
+        log_return_index = log_returns.index
+
+        target_years = [2011, 2017]
+        target_indices = [
+            log_return_index.get_loc(log_return_index[log_return_index.year == y][0])
+            for y in target_years
+        ]
+
         with pm.Model() as model:
-            tau = pm.DiscreteUniform("tau", lower=0, upper=len(data) - 1)
+            # tau_1 = pm.DiscreteUniform("tau_1", lower=0, upper=len(data))
+            # tau_2 = pm.DiscreteUniform("tau_2", lower=tau_1, upper=len(data))
+            # tau_3 = pm.DiscreteUniform("tau_3", lower=tau_2, upper=len(data))
+            tau_1 = pm.DiscreteUniform(
+                "tau_1", lower=target_indices[0], upper=target_indices[1]
+            )
+            tau_2 = pm.DiscreteUniform(
+                "tau_2", lower=target_indices[1], upper=len(data)
+            )
+
             sigma_1 = pm.HalfNormal("sigma_1", sigma=0.1)
             sigma_2 = pm.HalfNormal("sigma_2", sigma=0.1)
+            sigma_3 = pm.HalfNormal("sigma_3", sigma=0.1)
+
             mu = pm.Normal("mu_log_return", mu=0, sigma=0.01)
-            sigma = pm.math.switch(idx < tau, sigma_1, sigma_2)
+
+            sigma = pm.math.switch(
+                idx < tau_1, sigma_1, pm.math.switch(idx < tau_2, sigma_2, sigma_3)
+            )
+
             pm.Normal("obs", mu=mu, sigma=sigma, observed=data)
 
             self.model = model
@@ -233,7 +234,7 @@ class RegimeMixtureModel:
                 draws=2000,
                 tune=1000,
                 chains=4,
-                cores=1,
+                cores=4,
                 random_seed=42,
                 return_inferencedata=True,
             )
@@ -246,11 +247,20 @@ class RegimeMixtureModel:
         print(f"💾 Summary saved to {self.safe_relpath(output_path)}")
         display(summary_df)
 
-        tau_samples = self.trace.posterior["tau"].values.flatten()
-        tau_mode = int(pd.Series(tau_samples).mode().iloc[0])
-        tau_date = self.log_return_index[tau_mode]
-        print(f"\n📍 Most probable change point index: {tau_mode}")
-        print(f"📅 Most probable change point date: {tau_date}")
+        # Extract most probable change points
+        tau_1_samples = self.trace.posterior["tau_1"].values.flatten()
+        tau_2_samples = self.trace.posterior["tau_2"].values.flatten()
+
+        self.tau_1_mode = int(pd.Series(tau_1_samples).mode().iloc[0])
+        self.tau_2_mode = int(pd.Series(tau_2_samples).mode().iloc[0])
+
+        tau_1_date = self.log_return_index[self.tau_1_mode]
+        tau_2_date = self.log_return_index[self.tau_2_mode]
+
+        print(
+            f"\n📍 Most probable change point index: {self.tau_1_mode, self.tau_2_mode}"
+        )
+        print(f"📅 Most probable change point date: {tau_1_date, tau_2_date}")
 
         # Visualisation
         log_returns = self.df["LogReturn"].dropna()
@@ -263,19 +273,34 @@ class RegimeMixtureModel:
             alpha=0.7,
         )
         plt.axvline(
-            x=tau_date,
+            x=tau_1_date,
             color="green",
             linestyle="-",
             linewidth=2,
-            label="Most Probable Change Point (PyMC)",
+            label="Change Point 1 (PyMC)",
+        )
+        plt.axvline(
+            x=tau_2_date,
+            color="purple",
+            linestyle="-",
+            linewidth=2,
+            label="Change Point 2 (PyMC)",
         )
         plt.hist(
-            self.log_return_index[tau_samples],
+            self.log_return_index[tau_1_samples],
             bins=50,
             density=True,
             alpha=0.3,
-            color="orange",
-            label="Posterior of Change Point",
+            color="green",
+            label="Posterior of τ₁",
+        )
+        plt.hist(
+            self.log_return_index[tau_2_samples],
+            bins=50,
+            density=True,
+            alpha=0.3,
+            color="purple",
+            label="Posterior of τ₂",
         )
         plt.title("Bayesian Volatility Change Point Detection (PyMC)")
         plt.xlabel("Date")
@@ -292,7 +317,42 @@ class RegimeMixtureModel:
             print(f"\nPlot saved to {self.safe_relpath(plot_path)}")
         plt.show()
         plt.close()
+
         return self.trace
+
+    def quantify_volatility_impact(self):
+        """
+        Quantifies volatility before, between, and after the detected change points.
+        Computes standard deviation of log returns in each regime.
+        """
+        if self.trace is None or self.log_return_index is None:
+            print("⚠️ Trace or index missing. Run inference first.")
+            return
+
+        log_returns = self.df["LogReturn"].dropna().copy()
+        regime_1 = log_returns.iloc[: self.tau_1_mode]
+        regime_2 = log_returns.iloc[self.tau_1_mode : self.tau_2_mode]
+        regime_3 = log_returns.iloc[self.tau_2_mode :]
+
+        vol_1 = regime_1.std()
+        vol_2 = regime_2.std()
+        vol_3 = regime_3.std()
+
+        print("\n📊 Volatility by regime (standard deviation of log returns):")
+        print(f"Regime 1 (before τ₁): {vol_1:.4f}")
+        print(f"Regime 2 (between τ₁ and τ₂): {vol_2:.4f}")
+        print(f"Regime 2 (after τ₂): {vol_3:.4f}")
+
+        # Optional: Save to CSV
+        vol_df = pd.DataFrame(
+            {
+                "Regime": ["Before τ₁", "Between τ₁–τ₂", "After τ₂"],
+                "Volatility": [vol_1, vol_2, vol_3],
+            }
+        )
+        output_path = os.path.join(self.processed_dir, "volatility_by_regime.csv")
+        vol_df.to_csv(output_path, index=False)
+        print(f"\n💾 Volatility summary saved to {self.safe_relpath(output_path)}")
 
     def save_summary_and_trace(self):
         """
@@ -308,4 +368,5 @@ class RegimeMixtureModel:
         self.change_point_detection_with_ruptures()
         self.build_volatility_model_with_pymc()
         self.run_volatility_inference()
+        self.quantify_volatility_impact()
         self.save_summary_and_trace()
