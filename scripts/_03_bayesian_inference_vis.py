@@ -133,29 +133,88 @@ class ChangePointAnalysis:
         print("Event data loaded.")
         return self.events
 
-    def match_change_point_to_event(self, window_days=60):
+    def match_change_point_to_event(self, window_days=60, price_window=30):
         """
-        Matches the estimated change point to nearby events.
+        Matches each estimated change point (τ₁, τ₂, τ₃) to nearby events.
+        Adds volatility and price impact summaries. Saves all to a single CSV.
         """
 
-        # Map tau to date
-        tau_mean = int(self.trace.posterior["tau"].mean().values)
-        self.change_date = self.df.index[tau_mean]
-        print(f"\n📈 Estimated Change Point: {self.change_date.date()}\n")
-
-        if self.change_date is None or not hasattr(self, "events"):
-            print("Missing change_date or event data.")
+        if not hasattr(self, "events"):
+            print("⚠️ Event data not loaded. Call load_event_data() first.")
             return
 
-        window_start = self.change_date - pd.Timedelta(days=window_days)
-        window_end = self.change_date + pd.Timedelta(days=window_days)
+        tau_means = {
+            "τ₁": int(self.trace.posterior["tau_1"].mean().values),
+            "τ₂": int(self.trace.posterior["tau_2"].mean().values),
+        }
 
-        matching_events = self.events[
-            self.events["Date"].between(window_start, window_end)
-        ]
-        print(f"📅 Events near {self.change_date.date()} ({window_days} day window):")
-        # print(matching_events.to_string(index=False))
-        display(matching_events)
+        change_dates = {label: self.df.index[idx] for label, idx in tau_means.items()}
+        self.change_date = change_dates
+
+        print("\n📍 Estimated Change Points:")
+        for label, date in change_dates.items():
+            print(f"  {label}: {date.date()}")
+
+        all_matched_events = []
+
+        print("\n🔎 Matching Events Within ±{} Days:".format(window_days))
+        for label, date in change_dates.items():
+            window_start = date - pd.Timedelta(days=window_days)
+            window_end = date + pd.Timedelta(days=window_days)
+
+            nearby_events = self.events[
+                self.events["Date"].between(window_start, window_end)
+            ].copy()
+
+            change_idx = tau_means[label]
+
+            # Volatility before and after
+            log_returns = self.df["LogReturn"].dropna()
+            vol_before = round(
+                log_returns.iloc[max(0, change_idx - 60) : change_idx].std(), 4
+            )
+            vol_after = round(log_returns.iloc[change_idx : change_idx + 60].std(), 4)
+
+            # Price change around τ
+            prices = self.df["Price"].dropna()
+            price_before = round(
+                prices.iloc[max(0, change_idx - price_window) : change_idx].mean(), 4
+            )
+            price_after = round(
+                prices.iloc[change_idx : change_idx + price_window].mean(), 4
+            )
+            price_change_pct = round(
+                (((price_after - price_before) / price_before) * 100), 4
+            )
+
+            nearby_events["MatchedTo"] = label
+            nearby_events["ChangePointDate"] = date
+
+            # Annotate each event
+            nearby_events["MatchedTo"] = label
+            nearby_events["ChangePointDate"] = date
+            nearby_events["VolatilityBefore"] = vol_before
+            nearby_events["VolatilityAfter"] = vol_after
+            nearby_events["PriceBefore"] = price_before
+            nearby_events["PriceAfter"] = price_after
+            nearby_events["PriceChangePct"] = price_change_pct
+
+            print(f"🕒 Around {label} ({date.date()}):")
+            if nearby_events.empty:
+                print("  No events found in this window.")
+            else:
+                print("  Event has been found in this window.")
+                all_matched_events.append(nearby_events)
+
+        # Combine and save
+        if all_matched_events:
+            combined_df = pd.concat(all_matched_events, ignore_index=True)
+            display(combined_df)
+            output_path = os.path.join(self.processed_dir, "matched_events.csv")
+            combined_df.to_csv(output_path, index=False)
+            print(f"\n💾 All matched events saved to: {self.safe_relpath(output_path)}")
+        else:
+            print("⚠️ No events matched any change point. CSV not created.")
 
     def run_analysis(self):
         self.interpret_results()
