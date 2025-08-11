@@ -1,34 +1,74 @@
-// LogReturnChart.js
+/*LogReturnChart.js*/
 
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
+import React, { useEffect, useState } from "react";
+import {LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label} from "recharts";
 
-const LogReturnChart = () => {
-  const [data, setData] = useState([]);
-
+function LogReturnChart() {
+  const [priceData, setPriceData] = useState([]);
+  const [events, setEvents] = useState([]);
+  const eventColors = {
+    'Economic Shock': '#4c00ffff',
+    'Geopolitical': '#ff0800ff',
+    'Natural Disaster': '#f99900ff',
+    'OPEC Decision': '#00ff00ff',
+    'Sanctions': '#fff200ff',
+  };
+  const getLabelPosition = (index, type) => {
+    const positions = ["top", "middle", "bottom"];
+    return positions[index % positions.length];
+  };
+  
   useEffect(() => {
-    axios.get('http://localhost:5000/price-data')
-      .then(res => setData(res.data))
-      .catch(err => console.error('Error fetching data:', err));
+    fetch("http://localhost:5000/price-data")
+      .then((res) => res.json())
+      .then((json) => setPriceData(json));
+
+    fetch("http://localhost:5000/matched-events")
+      .then((res) => res.json())
+      .then((json) => setEvents(json));
   }, []);
 
+  
   return (
-    <div style={{ width: '100%', height: 400 }}>
-      <h3>Log Returns of Brent Oil Prices</h3>
-      <ResponsiveContainer>
-        <LineChart data={data}>
+    <div>
+      <h3>Price Change with Event Overlays</h3>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={priceData}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tickFormatter={(d) => new Date(d).getFullYear()} />
-          <YAxis />
+          <XAxis 
+            dataKey="Date"
+            tickFormatter={(dateStr) => dateStr.split("/")[2]} // Extract year from "dd/mm/yyyy"
+            interval="preserveStartEnd"
+            textAnchor="end"
+            />
+          <YAxis
+            label={{ value: "Log Returns", angle: -90, position: "outsideLeft", dx:-20, }}
+            />
           <Tooltip />
-          <Line type="monotone" dataKey="LogReturn" stroke="#bc2618" dot={false} />
+          <Line type="monotone" dataKey="LogReturn" stroke="#000000c8" dot={false} />
+
+          {/* Overlay matched events */}
+          {events.map((event, index) => (
+            <ReferenceLine
+              key={index}
+              x={event.Date}
+              stroke={eventColors[event["Event Type"]]}
+              strokeDasharray="3 3"
+              
+            >
+              <Label
+                value={event["Event Name"]}
+                position={getLabelPosition(index, event["Event Type"])}
+                angle={45}
+                offset={-95}
+                style={{ fontSize: "12px", fill: eventColors[event["Event Type"]]}}
+              />
+            </ReferenceLine>
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
-};
+}
 
 export default LogReturnChart;
