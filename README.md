@@ -31,7 +31,6 @@ In this project, we explore how PyMC4-powered change point modelling transforms 
 - [Installation](#installation)
 - [Usage](#usage)
 - [Contribution](#contribution)
-- [Next Steps](#next-steps)
 - [Project Status](#project-status)
 
 ---
@@ -181,36 +180,37 @@ Once the environment is set up, you can execute the pipeline and inspect model o
     ```
 
     Once both are running, open the React frontend in your browser and navigate to:
-    `http://localhost:5000/`
+    `http://localhost:3000/`
 
      The dashboard includes:
 
-    - **Price Chart**: Daily Brent oil prices with change point overlays and event annotations.
-    - **Rolling Mean**: 180-day moving average of prices.
+    - **Price Chart**: Daily Brent oil prices with trend overlays (180-day moving average of prices).
+    - **Log Return**: Daily log returns with chane point overlays that capture price momentum and clustering.
     - **Rolling Std Dev**: Rolling volatility to assess market turbulence.
-    - **Log Return**: Daily log returns to capture price momentum and clustering.
-    - **Change Point Chart**: Posterior mean shifts and regime transitions.
-    - **Posterior Summary**: PyMC4 model diagnostics and trace plots.
-
-    Use the dropdown menu to toggle between views and explore different statistical layers of the time series.
+    - **Volatality by Regime**: Posterior mean shifts and regime transitions.
+    - **Event Type Distribution**: Events type that affect price by percentage (eg., Economic Shock, OPEC decisions).
 
 5. **API Endpoints (Flask)**
     The dashboard is powered by the following Flask routes:
 
-    |Endpoint       | Description                                   |
-    |:--------------|-----------------------------------------------|
-    |/price-data    |Returns Brent oil prices with rolling metrics  |
-    |/change-points |Returns PyMC4-inferred change point segments   |
-    |/event-overlay |Returns curated event metadata for annotation  |
+    | Endpoint              | Description                                                                 |
+    |-----------------------|-----------------------------------------------------------------------------|
+    | `/price-data`         | Returns Brent oil prices with rolling metrics                               |
+    | `/matched-events`     | Returns events matched to detected change points with impact quantification |
+    | `/event-overlay`      | Returns curated event metadata for annotation                               |
+    | `/regime-volatility`  | Returns volatility statistics segmented by regime periods                   |
+    | `/change-points`      | Returns PyMC4-inferred change point segments                                |
+    | `/posterior-summary`  | Returns posterior distributions and summary statistics from Bayesian model  |
 
     These endpoints serve JSON payloads consumed by the React frontend.
 
 6. **Dashboard Walkthrough (GIF)**
 
+    ![Dashboard](insights/dashboard/brent_oil_dashboard.mp4)
+
     This GIF demonstrates:
-    - Toggling between statistical views
+    - Scrolling through different plots
     - Hovering over change points and events
-    - Interacting with dropdown filters and overlays
 
     >Tip: For best performance, ensure both Flask and React servers are running concurrently.
 
@@ -253,85 +253,93 @@ The following plots illustrate key trends in the Bernt Oil Price:
 
 ## Modelling Insights
 
-- Change Point
-  - The algorithm identifies multiple structural breaks, often aligning with known geopolitical or economic disruptions.
-
-  - These change points suggest transitions between different market regimes (e.g., from stable to volatile periods or vice versa).
+### Change Point
 
 ![Change Point](insights/model/change_point_detection.png)
 
-- Energy Plot
-  - This plot visualises the distribution of marginal energy across four MCMC chains used in your PyMC4 model.
+- The algorithm identifies multiple structural breaks, often aligning with known geopolitical or economic disruptions.
+- These change points suggest transitions between different market regimes (e.g., from stable to volatile periods or vice versa).
 
-  - The legend includes BFMI (Bayesian Fraction of Missing Information) values for each chains.
-  - BFMI is a diagnostic metric that assesses how well the sampler explores the energy landscape.
-  - Values close to 1.0 indicate efficient sampling and good mixing across chains.
-  - This plot helps validate the reliability of your posterior estimates critical for interpreting change points and regime shifts.
+### Energy Plot
 
 ![Energy Point](insights/model/energy_plot.png)
 
-- Posterior Plot
+- This plot visualises the distribution of marginal energy across four MCMC chains used in your PyMC4 model.
+- The legend includes BFMI (Bayesian Fraction of Missing Information) values for each chains.
+- BFMI is a diagnostic metric that assesses how well the sampler explores the energy landscape.
+- Values close to 1.0 indicate efficient sampling and good mixing across chains.
+- This plot helps validate the reliability of your posterior estimates critical for interpreting change points and regime shifts.
 
-## Posterior Summary
+### Posterior Plot
 
-| Parameter     | Description                          | Mean   | 94% HDI Range         |
-|---------------|--------------------------------------|--------|------------------------|
-| mu_log_return | Mean of log returns                  | 0.00022| −0.00029 to 0.0007     |
-| sigma_1       | Volatility before change point       | 0.023  | 0.0223 to 0.023        |
-| sigma_2       | Volatility after change point        | 0.029  | 0.026 to 0.029         |
-| tau           | Change point index                   | 5389   | 5346 to 5422           |
-
-These results confirm a statistically significant shift in volatility and support event attribution analysis.
+#### Posterior Summary
 
 ![Posterior Point](insights/model/posterior_plot.png)
 
-- Trace Plot
+| Parameter       | Description                          | Mean     | 94% HDI Range          |
+|-----------------|--------------------------------------|----------|------------------------|
+| `mu_log_return` | Mean of log returns                  | 9.2e-05  | −0.000056 to 0.00055   |
+| `sigma_1`       | Volatility before change point       | 0.024    | 0.023 to 0.024         |
+| `sigma_2`       | Volatility after change point        | 0.019    | 0.019 to 0.020         |
+| `sigma_3`       | Volatility after second change point | 0.049    | 0.046 to 0.051         |
+| `tau_1`         | First change point index             | 6013     | 6002 to 6043           |
+| `tau_2`         | Second change point index            | 8322     | 8315 to 8328           |
 
-  **Model Diagnostics: Posterior & Trace Plots**
+Interpretation
 
-  To validate our Bayesian model, we examined both posterior distributions and MCMC trace plots:
+These results reveal two statistically significant shifts in volatility across the Brent oil price series:
 
-  - `mu_log_return`: Stable mean across the series.
-  - `sigma_1` vs. `sigma_2`: Volatility increased post-change point.
-  - `tau`: Sharp posterior peak confirms a well-identified regime shift.
-  - Trace plots show good mixing and convergence across all chains.
+- The initial drop in volatility (from `sigma_1` to `sigma_2`) suggests a period of market stabilization.
+- The subsequent spike (from `sigma_2` to `sigma_3`) indicates renewed turbulence, possibly tied to geopolitical or economic shocks.
+- The narrow HDI ranges around both change points (`tau_1`, `tau_2`) reflect high model confidence, reinforcing the validity of associating these structural breaks with real-world events.
 
-  These diagnostics confirm the reliability of our change point detection and support downstream event attribution.
+This posterior summary provides a robust foundation for event attribution and stakeholder impact analysis.
+
+### Trace Plot
+
+#### Model Diagnostics: Posterior & Trace Plots
 
 ![Trace Point](insights/model/trace_plot.png)
 
-- Volatality Change Point Detection
+To validate our Bayesian model, we examined both posterior distributions and MCMC trace plots for six key parameters:
 
-  **Volatility Change Point Detection**
+- `mu_log_return`: Posterior centered around 0.0025 with stable trace lines, indicating a consistent mean across the series.
+- `sigma_1`, `sigma_2`, `sigma_3`: Volatility regimes show clear separation:
+  - `sigma_1` (≈ 0.024): Pre-change point stability.
+  - `sigma_2` (≈ 0.0195): Reduced volatility post-first change.
+  - `sigma_3` (≈ 0.015): Further dampening in the final regime.
+- `tau_1`, `tau_2`: Sharp posterior peaks around indices 6100 and 8315, confirming well-identified regime shifts.
+- Trace plots across all parameters show good mixing and convergence, with no signs of autocorrelation or divergence.
 
-  Using PyMC4, we modeled log returns to detect shifts in market volatility. The model identified a significant change point around 2008, coinciding with the Global Financial Crisis.
+#### Interpretation
 
-  | Metric | Before 2008 | After 2008 | % Change |
-  |--------|-------------|------------|----------|
-  | Volatility (σ) | 0.023 | 0.029 | +26.1% |
+These diagnostics confirm:
 
-  This confirms a transition to a more turbulent regime, supporting risk-aware investment strategies and policy planning.
+- High confidence in both change point locations (`tau_1`, `tau_2`).
+- Distinct volatility regimes that support structural segmentation.
+- Reliable posterior inference, suitable for downstream event attribution and stakeholder reporting.
+
+### Regime Shift Interpretation
 
 ![Volatality Detection](insights/model/volatility_change_point_detection.png)
+
+Using PyMC4, we modeled log returns to detect shifts in market volatility. The model identified two significant change points:
+
+- The first around late 2008, aligning with the Global Financial Crisis.
+- The second around early 2020, coinciding with the COVID-19 pandemic and oil price collapse.
+
+| Metric             | Pre-2010 (`σ₁`) | 2010–2020 (`σ₂`) | Post-2020 (`σ₃`) | % Change (σ₁ → σ₃) |
+|--------------------|------------------|------------------|------------------|--------------------|
+| Volatility (σ)     | 0.024            | 0.0195           | 0.015            | −37.5%             |
+
+This confirms a transition from high volatility to a more dampened regime post-2020. The model’s sharp posterior peaks and well-separated volatility estimates support robust change point detection. These insights are critical for risk-aware investment strategies, operational planning, and policy design in energy markets.
+
+---
 
 ## Contribution
 
 Contributions are welcome! Please fork the repository and submit a pull request. For major changes, open an issue first to discuss what you would like to change.
 Make sure to follow best practices for version control, testing, and documentation.
-
----
-
-## Next Steps
-
-- Finalise PyMC4 model comparison notebook with multiple breakpoints and dynamic priors.
-- Extend event attribution logic to highlight probable causal links with confidence annotations.
-- Build Flask API routes for regime parameters, change dates, and event-tagged summaries.
-- Implement dashboard features:
-  - Date sliders and event filters
-  - Regime overlays and tooltip explanations
-  - Responsive layout and trace plot integration
-- Add interactive notebooks with PyMC4 summary and ArviZ visualisations.
-- Document modelling assumptions and dashboard walkthrough in a final Medium blog.
 
 ---
 
