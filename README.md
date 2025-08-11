@@ -206,7 +206,7 @@ Once the environment is set up, you can execute the pipeline and inspect model o
 
 6. **Dashboard Walkthrough (GIF)**
 
-    ![Dashboard](insights/dashboard/brent_oil_dashboard.mp4)
+    ![Dashboard](insights/dashboard/brent_oil_dashboard.gif)
 
     This GIF demonstrates:
     - Scrolling through different plots
